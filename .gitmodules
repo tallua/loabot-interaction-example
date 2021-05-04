@@ -1,0 +1,6 @@
+[submodule "aws-lambda-cpp"]
+	path = aws-lambda-cpp
+	url = https://github.com/awslabs/aws-lambda-cpp.git
+[submodule "libsodium"]
+	path = libsodium
+	url = https://github.com/jedisct1/libsodium
