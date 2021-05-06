@@ -1,12 +1,12 @@
 # update submodule
-git submodule update
+git submodule update --init --recursive
 
 # install aws-lambda-cpp
 cd aws-lambda-cpp
 mkdir build
 cd build
-cmake3 .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
-   -DCMAKE_INSTALL_PREFIX=../../build
+cmake3 .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=../../build
+make && make install
 cd ../..
 
 
@@ -17,5 +17,12 @@ autoreconf --install
 ./configure --prefix=$PWD/../build
 make && make check
 make install
+cd ..
 
-
+# install aws-sdk-cpp
+cd aws-sdk-cpp
+mkdir build
+cd build
+cmake3 .. -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="lambda" -DCMAKE_INSTALL_PREFIX=../../build
+make && make install
+cd ../..
