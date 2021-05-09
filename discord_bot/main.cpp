@@ -156,15 +156,15 @@ void init()
     }
 
     std::cout << "INIT: registering commands" << std::endl;
-    router.setHandler("ping", [](JsonView view) -> DiscordResponse {
-        return DiscordResponse::Immediate({"pong!"});
-    });
-
-    router.setHandler("hello", [client](JsonView view) -> DiscordResponse {
+    router.setHandler("캐릭터", [client](JsonView body) -> DiscordResponse {
         try
         {
-            JsonValue payload;
-            callLambda(client, "hello-world", payload.View());
+            JsonValue param;
+            param.WithObject("discord", bot->sessionInfo(body.GetString("token")));
+            param.WithString("user_name", extract_option(body, "이름"));
+
+            callLambda(client, "loabot-back-get-character",
+                       JsonValue().WithObject("param", param).View());
             return DiscordResponse::Pending();
         }
         catch (const std::exception &e)
@@ -177,6 +177,75 @@ void init()
             std::cout << "ERROR: unknown exception" << std::endl;
             return DiscordResponse::Immediate({"Invalid Request"});
         }
+    });
+    router.setHandler("수집품", [client](JsonView body) -> DiscordResponse {
+        try
+        {
+            JsonValue param;
+            param.WithObject("discord", bot->sessionInfo(body.GetString("token")));
+            param.WithString("user_name", extract_option(body, "이름"));
+            param.WithString("collection_type", extract_option(body, "종류"));
+
+            callLambda(client, "loabot-back-get-collection",
+                       JsonValue().WithObject("param", param).View());
+            return DiscordResponse::Pending();
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "ERROR: exception [" << e.what() << "]" << std::endl;
+            return DiscordResponse::Immediate({"Invalid Request"});
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: unknown exception" << std::endl;
+            return DiscordResponse::Immediate({"Invalid Request"});
+        }
+    });
+    router.setHandler("거래소", [client](JsonView body) -> DiscordResponse {
+        try
+        {
+            JsonValue param;
+            param.WithObject("discord", bot->sessionInfo(body.GetString("token")));
+            param.WithString("item_name", extract_option(body, "이름"));
+
+            callLambda(client, "loabot-back-get-market",
+                       JsonValue().WithObject("param", param).View());
+            return DiscordResponse::Pending();
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "ERROR: exception [" << e.what() << "]" << std::endl;
+            return DiscordResponse::Immediate({"Invalid Request"});
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: unknown exception" << std::endl;
+            return DiscordResponse::Immediate({"Invalid Request"});
+        }
+    });
+    router.setHandler("주사위", [client](JsonView body) -> DiscordResponse {
+        try
+        {
+            JsonValue param;
+            param.WithObject("discord", bot->sessionInfo(body.GetString("token")));
+
+            callLambda(client, "loabot-back-dice",
+                       JsonValue().WithObject("param", param).View());
+            return DiscordResponse::Pending();
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "ERROR: exception [" << e.what() << "]" << std::endl;
+            return DiscordResponse::Immediate({"Invalid Request"});
+        }
+        catch (...)
+        {
+            std::cout << "ERROR: unknown exception" << std::endl;
+            return DiscordResponse::Immediate({"Invalid Request"});
+        }
+    });
+    router.setHandler("핑", [](JsonView view) -> DiscordResponse {
+        return DiscordResponse::Immediate({"퐁!"});
     });
 }
 
