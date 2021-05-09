@@ -8,7 +8,7 @@ set(CMAKE_PREFIX_PATH "../build")
 find_package(aws-lambda-runtime REQUIRED PATHS ../build)
 find_package(AWSSDK REQUIRED COMPONENTS lambda PATHS ../build)
 
-add_executable(${PROJECT_NAME} "main.cpp")
+add_executable(${PROJECT_NAME} "main.cpp" "discord_response.cpp")
 
 target_link_libraries(${PROJECT_NAME} PUBLIC AWS::aws-lambda-runtime ${AWSSDK_LINK_LIBRARIES})
 
