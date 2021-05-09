@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <map>
 
 #include <aws/lambda-runtime/runtime.h>
@@ -29,6 +30,7 @@ namespace discord
     {
     public:
         using CommandHandler = std::function<DiscordResponse(Aws::Utils::Json::JsonView)>;
+
     public:
         void setHandler(const Aws::String &command, CommandHandler handler);
 
@@ -44,5 +46,8 @@ namespace discord
         void load();
 
         bool verify(Aws::Utils::Json::JsonView request);
+
+    private:
+        std::vector<unsigned char> public_key;
     };
 }

@@ -35,4 +35,6 @@ cd hello-lambda
 mkdir build
 cd build
 cmake3 .. -DCMAKE_BUILD_TYPE=Release
+mkdir tmp
+cp -r ../config/ tmp/
 make aws-lambda-package-discord-bot

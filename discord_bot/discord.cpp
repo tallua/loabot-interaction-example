@@ -1,9 +1,63 @@
 #include "discord.hpp"
 
+#include <fstream>
+#include <iostream>
+
 #include <aws/core/utils/json/JsonSerializer.h>
+#include <sodium.h>
 
 using namespace discord;
 using namespace Aws::Utils::Json;
+
+namespace
+{
+    int hex_to_number(char ch)
+    {
+        if ('0' <= ch && ch <= '9')
+        {
+            return ch - '0';
+        }
+        if ('a' <= ch && ch <= 'f')
+        {
+            return ch - 'a' + 10;
+        }
+        if ('A' <= ch && ch <= 'F')
+        {
+            return ch - 'A' + 10;
+        }
+
+        throw std::runtime_error("invalid hex character");
+    }
+
+    std::vector<unsigned char> to_buffer_hex(const Aws::String &str)
+    {
+        std::vector<unsigned char> result;
+        result.reserve(str.size() / 2u);
+
+        for (size_t i = 0; i < str.size(); i += 2)
+        {
+            unsigned char ch =
+                hex_to_number(str[i]) * 16 +
+                hex_to_number(str[i + 1]);
+            result.push_back(ch);
+        }
+
+        return result;
+    }
+
+    std::vector<unsigned char> to_buffer(const Aws::String &str)
+    {
+        std::vector<unsigned char> result;
+        result.reserve(str.size());
+
+        for (auto &&ch : str)
+        {
+            result.push_back(static_cast<unsigned char>(ch));
+        }
+
+        return result;
+    }
+}
 
 DiscordResponse DiscordResponse::BadRequest()
 {
@@ -13,7 +67,7 @@ DiscordResponse DiscordResponse::BadRequest()
         "headers": {
             "content-type": "application/json"
         },
-        "body": "{\"message\": "Bad Request" }"
+        "body": "{\"message\": \"Bad Request\" }"
         })");
 
     return {400, response.View().WriteCompact()};
@@ -96,6 +150,14 @@ DiscordResponse DiscordRouter::route(Aws::Utils::Json::JsonView body)
 void DiscordBot::load()
 {
     // TODO: load key
+    std::ifstream ifs("./config/bot.json");
+    std::string json_str((std::istreambuf_iterator<char>(ifs)),
+                         std::istreambuf_iterator<char>());
+
+    JsonValue json(json_str);
+    Aws::String raw_public_key = json.View().GetString("APPLICATION_KEY");
+    public_key = to_buffer_hex(raw_public_key);
+    std::cout << "INIT: PUBLIC KEY length: " << public_key.size() << std::endl;
 }
 
 bool DiscordBot::verify(Aws::Utils::Json::JsonView request)
@@ -103,10 +165,40 @@ bool DiscordBot::verify(Aws::Utils::Json::JsonView request)
     if (!request.KeyExists("headers") ||
         !request.KeyExists("body"))
     {
+        std::cout << "ERROR: invalid request format" << std::endl;
         return false;
     }
 
-    // TODO: sodium verify
+    auto header = request.GetObject("headers");
+    if (!header.KeyExists("x-signature-ed25519") ||
+        !header.KeyExists("x-signature-timestamp"))
+    {
+        std::cout << "ERROR: invalid key on header" << std::endl;
+        return false;
+    }
+
+    if (public_key.size() != crypto_sign_PUBLICKEYBYTES)
+    {
+        std::cout << "ERROR: invalid public key length" << std::endl;
+        return false;
+    }
+
+    auto signature = header.GetString("x-signature-ed25519");
+    auto timestamp = header.GetString("x-signature-timestamp");
+    auto raw_body = request.GetString("body");
+
+    auto message = timestamp + raw_body;
+
+    auto signature_hex = to_buffer_hex(signature);
+    auto message_hex = to_buffer(message);
+
+    if (crypto_sign_verify_detached(signature_hex.data(),
+                                    message_hex.data(), message_hex.size(),
+                                    public_key.data()) != 0)
+    {
+        std::cout << "ERROR: verification failed" << std::endl;
+        return false;
+    }
 
     return true;
 }
