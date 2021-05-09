@@ -3,8 +3,10 @@
 #include <string>
 
 #include <aws/lambda-runtime/runtime.h>
+#include <aws/core/utils/json/JsonSerializer.h>
 
 using namespace aws::lambda_runtime;
+using namespace Aws::Utils::Json;
 
 extern std::string route(invocation_request const &request);
 
@@ -47,6 +49,16 @@ invocation_response DiscordResponse::response()
 
 invocation_response my_handler(invocation_request const &request)
 {
+    Aws::Utils::Json::JsonValue json(request.payload);
+    std::cout << "parse status: " << json.WasParseSuccessful() << std::endl;
+    JsonView view(json);
+    auto childs = view.GetAllObjects();
+    if(childs.find("body") == childs.end()) {
+        std::cout << "body not exist" << std::endl;
+    } else {
+        std::cout << "body is: " << view.GetString("body") << std::endl;
+    }
+
     if (!verify(request))
     {
         std::cout << "RESULT: authorization fail" << std::endl;

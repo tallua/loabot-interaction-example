@@ -23,6 +23,16 @@ cd ..
 cd aws-sdk-cpp
 mkdir build
 cd build
-cmake3 .. -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="lambda" -DCMAKE_INSTALL_PREFIX=../../build
-make && make install
+cmake3 .. -DCMAKE_BUILD_TYPE=Release -DBUILD_ONLY="lambda" -DCMAKE_INSTALL_PREFIX=../../build -DBUILD_SHARED_LIBS=OFF -DS2N_NO_PQ_ASM=ON -DENABLE_UNITY_BUILD=ON -DENABLE_TESTING=OFF
+make
+sudo make install
 cd ../..
+
+
+
+# build discord-lambda
+cd hello-lambda
+mkdir build
+cd build
+cmake3 .. -DCMAKE_BUILD_TYPE=Release
+make aws-lambda-package-discord-bot
