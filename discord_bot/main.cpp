@@ -19,7 +19,7 @@ using namespace Aws::Lambda::Model;
 
 #define LAMBDA_CLIENT_NAME "discord-bot"
 
-DiscordBot bot;
+std::shared_ptr<DiscordBot> bot;
 DiscordRouter router;
 
 invocation_response my_handler(invocation_request const &request)
@@ -31,7 +31,7 @@ invocation_response my_handler(invocation_request const &request)
         return DiscordResponse::BadRequest().response();
     }
 
-    if (!bot.verify(request_json.View()))
+    if (!bot->verify(request_json.View()))
     {
         std::cout << "ERROR: authorization fail" << std::endl;
         return DiscordResponse::BadRequest().response();
@@ -60,7 +60,7 @@ invocation_response my_handler(invocation_request const &request)
         try
         {
             DiscordResponse response = router.route(body_json.View());
-            std::cout << "RESULT: success" << std::endl;
+            std::cout << "RESULT: success: " << response.payload << std::endl;
             return response.response();
         }
         catch (const std::exception &e)
@@ -115,13 +115,34 @@ void callLambda(std::shared_ptr<LambdaClient> client,
     }
 }
 
+Aws::String extract_option(JsonView param, Aws::String option)
+{
+    if (!param.IsObject() ||
+        !param.KeyExists("data") ||
+        !param.GetAllObjects()["data"].KeyExists("options"))
+    {
+        throw std::runtime_error("ERROR: invalid option format");
+    }
+
+    auto options = param.GetAllObjects()["data"].GetArray("options");
+    for (std::size_t i = 0; i < options.GetLength(); ++i)
+    {
+        if (options.GetItem(i).GetString("name") == option)
+        {
+            return options.GetItem(i).GetString("value");
+        }
+    }
+
+    throw std::runtime_error("ERROR: option not found");
+}
+
 void init()
 {
     Aws::SDKOptions options;
     Aws::InitAPI(options);
 
     std::cout << "INIT: loading bot information" << std::endl;
-    bot.load();
+    bot = std::make_shared<DiscordBot>();
 
     std::cout << "INIT: creating lambda client" << std::endl;
     Aws::Client::ClientConfiguration clientConfig;

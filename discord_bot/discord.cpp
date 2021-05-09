@@ -59,6 +59,22 @@ namespace
     }
 }
 
+JsonValue DiscordMessage::to_json() const
+{
+    JsonValue result;
+    result.WithBool("tts", false)
+        .WithString("content", content)
+        .WithArray("embeds", Aws::Utils::Array<JsonValue>())
+        .WithObject("allowed_mentions", JsonValue()
+                                            .WithArray("parse", Aws::Utils::Array<JsonValue>())
+                                            .WithArray("roles", Aws::Utils::Array<JsonValue>())
+                                            .WithArray("users", Aws::Utils::Array<JsonValue>())
+                                            .WithBool("replied_user", false))
+        .WithInteger("flags", 0);
+
+    return result;
+}
+
 DiscordResponse DiscordResponse::BadRequest()
 {
     JsonValue response(R"({
@@ -88,6 +104,9 @@ DiscordResponse DiscordResponse::Ping()
 
 DiscordResponse DiscordResponse::Immediate(const DiscordMessage &message)
 {
+    JsonValue body;
+    body.WithInteger("type", 4)
+        .WithObject("data", message.to_json());
     JsonValue response(R"({
         "statusCode": 200,
         "isBase64Encoded": false,
@@ -96,6 +115,8 @@ DiscordResponse DiscordResponse::Immediate(const DiscordMessage &message)
         },
         "body": "{\"type\": 4 }"
         })");
+    response.WithString("body", body.View().WriteCompact());
+
     return {200, response.View().WriteCompact()};
 }
 
@@ -112,7 +133,7 @@ DiscordResponse DiscordResponse::Pending()
     return {200, response.View().WriteCompact()};
 }
 
-aws::lambda_runtime::invocation_response DiscordResponse::response()
+aws::lambda_runtime::invocation_response DiscordResponse::response() const
 {
     if (200 <= statusCode && statusCode < 300)
     {
@@ -132,7 +153,8 @@ void DiscordRouter::setHandler(const Aws::String &command, CommandHandler handle
 DiscordResponse DiscordRouter::route(Aws::Utils::Json::JsonView body)
 {
     if (!body.KeyExists("data") ||
-        !body.GetObject("data").KeyExists("name"))
+        !body.GetObject("data").KeyExists("name") ||
+        !body.KeyExists("token"))
     {
         throw std::runtime_error("invalid body type");
     }
@@ -147,17 +169,35 @@ DiscordResponse DiscordRouter::route(Aws::Utils::Json::JsonView body)
     return handler_it->second(body);
 }
 
+DiscordBot::DiscordBot()
+{
+    load();
+}
+
 void DiscordBot::load()
 {
-    // TODO: load key
     std::ifstream ifs("./config/bot.json");
-    std::string json_str((std::istreambuf_iterator<char>(ifs)),
-                         std::istreambuf_iterator<char>());
+    std::string config_str((std::istreambuf_iterator<char>(ifs)),
+                           std::istreambuf_iterator<char>());
 
-    JsonValue json(json_str);
-    Aws::String raw_public_key = json.View().GetString("APPLICATION_KEY");
+    JsonValue config(config_str);
+    Aws::String raw_public_key = config.View().GetString("APPLICATION_KEY");
     public_key = to_buffer_hex(raw_public_key);
     std::cout << "INIT: PUBLIC KEY length: " << public_key.size() << std::endl;
+
+    app_id = config.View().GetString("APPLICATION_ID");
+    bot_token = config.View().GetString("BOT_TOKEN");
+}
+
+JsonValue DiscordBot::sessionInfo(Aws::String token)
+{
+    JsonValue result;
+
+    result.WithString("app_id", app_id);
+    result.WithString("interaction_token", token);
+    result.WithString("bot_token", bot_token);
+
+    return result;
 }
 
 bool DiscordBot::verify(Aws::Utils::Json::JsonView request)

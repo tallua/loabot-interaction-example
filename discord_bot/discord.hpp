@@ -10,7 +10,9 @@ namespace discord
 {
     struct DiscordMessage
     {
-        Aws::String message;
+        Aws::String content;
+
+        Aws::Utils::Json::JsonValue to_json() const;
     };
 
     struct DiscordResponse
@@ -23,7 +25,7 @@ namespace discord
         int statusCode;
         Aws::String payload;
 
-        aws::lambda_runtime::invocation_response response();
+        aws::lambda_runtime::invocation_response response() const;
     };
 
     class DiscordRouter
@@ -43,11 +45,16 @@ namespace discord
     class DiscordBot
     {
     public:
-        void load();
+        DiscordBot();
 
+        Aws::Utils::Json::JsonValue sessionInfo(Aws::String token);
         bool verify(Aws::Utils::Json::JsonView request);
 
     private:
+        void load();
+
+        Aws::String app_id;
+        Aws::String bot_token;
         std::vector<unsigned char> public_key;
     };
 }
